@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Panel DEFCO</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <div class="topbar">
+    <img src="assets/logo.png" class="logo-small">
+    <button class="logout" onclick="logout()">Cerrar Sesión</button>
+  </div>
+
+  <div class="container">
+
+    <h2>Panel de Control</h2>
+
+    <button onclick="openDoor()">🔓 Abrir Puerta</button>
+
+    <button onclick="crearUsuario()">➕ Crear Usuario</button>
+
+    <button onclick="asignarTarjeta()">💳 Asignar Tarjeta</button>
+
+    <button onclick="generarQR()">📱 Generar QR</button>
+
+    <p id="log"></p>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
