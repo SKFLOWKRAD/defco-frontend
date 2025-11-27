@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Control de Acceso</title>
+
+<link rel="stylesheet"
+href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+
+<style>
+body {
+    background: #f3f4f6;
+    font-family: "Segoe UI", sans-serif;
+}
+
+.card-box {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.card-visit {
+    background: white;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+/* ==================== SLIDE TO OPEN ==================== */
+
+#slideContainer {
+    position: relative;
+    background: #e5e5e5;
+    width: 100%;
+    height: 60px;
+    border-radius: 40px;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.2);
+    margin-top: 15px;
+    user-select: none;
+}
+
+#slideTrack {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 18px;
+    color: #6b6b6b;
+    pointer-events: none;
+}
+
+#slideTrack::after {
+    content: "Deslizá para abrir 🔓";
+}
+
+#slider {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    width: 50px;
+    height: 50px;
+    background: #0aa02c;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s, left 0.3s;
+}
+
+#slider.active {
+    background: #088a25;
+}
+
+#slider.success {
+    background: #0aa02c;
+    box-shadow: 0 0 12px #0aa02c;
+    transform: scale(1.1);
+}
+</style>
+</head>
+
+<body>
+
+<div class="container mt-3">
+
+    <button class="btn btn-secondary mb-3" onclick="location.href='index.html'">⬅ Volver</button>
+
+    <h3 class="text-center">Control de Acceso</h3>
+
+    <!-- ==================== ABRIR PUERTA ==================== -->
+    <div class="card-box text-center">
+        <h5>Abrir puerta</h5>
+
+        <!-- SLIDE -->
+        <div id="slideContainer">
+            <div id="slideTrack"></div>
+            <div id="slider">🔓</div>
+        </div>
+
+        <p id="msgPuerta" class="mt-2 fw-bold"></p>
+    </div>
+
+    <!-- ==================== INVITACIONES ==================== -->
+    <div class="card-box">
+        <h5>Crear invitación</h5>
+
+        <form id="formInv">
+            <label>Nombre del invitado</label>
+            <input id="nombre" class="form-control">
+            <button class="btn btn-primary w-100 mt-3">Crear invitación</button>
+        </form>
+
+        <p id="msg" class="text-success mt-3"></p>
+
+        <div id="qrCont" class="text-center" style="display:none;">
+            <h6>QR generado</h6>
+            <img id="qrImg" width="200">
+        </div>
+    </div>
+
+    <div class="card-box">
+        <h5>Mis visitas</h5>
+        <button class="btn btn-info w-100 mb-3" onclick="loadVisitas()">Actualizar</button>
+
+        <div id="visitas"></div>
+    </div>
+
+</div>
+
+<script>
+// =====================================================
+// ============= SLIDE TO OPEN PUERTA =================
+// =====================================================
+
+let sliding = false;
+let startX = 0;
+
+const sliderBtn = document.getElementById("slider");
+const container = document.getElementById("slideContainer");
+const msg = document.getElementById("msgPuerta");
+
+sliderBtn.addEventListener("mousedown", startSlide);
+sliderBtn.addEventListener("touchstart", startSlide);
+
+function startSlide(e) {
+    sliding = true;
+    startX = e.touches ? e.touches[0].clientX : e.clientX;
+    sliderBtn.classList.add("active");
+}
+
+document.addEventListener("mousemove", moveSlide);
+document.addEventListener("touchmove", moveSlide);
+
+document.addEventListener("mouseup", endSlide);
+document.addEventListener("touchend", endSlide);
+
+function moveSlide(e) {
+    if (!sliding) return;
+
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const diff = clientX - startX;
+
+    const maxLeft = container.clientWidth - sliderBtn.clientWidth - 5;
+    let newLeft = Math.max(5, Math.min(diff + 5, maxLeft));
+
+    sliderBtn.style.left = newLeft + "px";
+}
+
+function endSlide() {
+    if (!sliding) return;
+    sliding = false;
+
+    const maxLeft = container.clientWidth - sliderBtn.clientWidth - 5;
+    const currentLeft = parseInt(sliderBtn.style.left);
+
+    // Si NO llega al final → volver al inicio
+    if (currentLeft < maxLeft - 5) {
+        sliderBtn.style.left = "5px";
+        sliderBtn.classList.remove("active");
+        return;
+    }
+
+    // Llega al final → abrir puerta
+    sliderBtn.classList.remove("active");
+    sliderBtn.classList.add("success");
+
+    abrirPuertaSlide();
+    resetSlider();
+}
+
+function resetSlider() {
+    setTimeout(() => {
+        sliderBtn.style.left = "5px";
+        sliderBtn.classList.remove("success");
+    }, 1200);
+}
+
+// ==================== API + VIBRACIÓN ====================
+async function abrirPuertaSlide() {
+    msg.innerText = "Abriendo puerta...";
+    msg.style.color = "#0a6d1a";
+
+    const r = await fetch("http://localhost:3000/api/abrir", {
+        method: "POST",
+        credentials: "include"
+    });
+
+    const data = await r.json();
+
+    if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+
+    if (r.ok)
+        msg.innerText = "✔ Puerta abierta";
+    else
+        msg.innerText = "❌ Error al abrir puerta";
+    msg.style.color = r.ok ? "green" : "red";
+
+    setTimeout(() => msg.innerText = "", 3000);
+}
+
+// =====================================================
+// ==================== INVITACIONES ====================
+// =====================================================
+
+document.getElementById("formInv").addEventListener("submit", async e => {
+    e.preventDefault();
+
+    const nombre = document.getElementById("nombre").value;
+
+    const resp = await fetch("http://localhost:3000/api/invitaciones", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        credentials: "include",
+        body: JSON.stringify({ nombreInvitado: nombre })
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+        document.getElementById("msg").innerText = data.error;
+        return;
+    }
+
+    document.getElementById("msg").innerText =
+        "Invitación generada correctamente";
+
+    document.getElementById("qrCont").style.display = "block";
+    document.getElementById("qrImg").src = data.qr;
+
+    loadVisitas();
+});
+
+async function loadVisitas() {
+    const r = await fetch("http://localhost:3000/api/invitaciones", {
+        credentials: "include"
+    });
+
+    const lista = await r.json();
+
+    const cont = document.getElementById("visitas");
+    cont.innerHTML = "";
+
+    lista.forEach(v => {
+        cont.innerHTML += `
+            <div class="card-visit">
+                <strong>${v.name}</strong><br>
+                Tarjeta: ${v.cardNo}<br>
+                Estado: ${v.estado}<br>
+                <img src="${v.qr}" width="120"><br>
+                <button class="btn btn-danger btn-sm mt-2"
+                        onclick="desactivar('${v.cardNo}')">
+                    Desactivar
+                </button>
+            </div>
+        `;
+    });
+}
+loadVisitas();
+
+async function desactivar(cardNo) {
+    if (!confirm("¿Desactivar invitación?")) return;
+
+    await fetch("http://localhost:3000/api/desactivar", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        credentials: "include",
+        body: JSON.stringify({ cardNo })
+    });
+
+    loadVisitas();
+}
+</script>
+
+</body>
+</html>
